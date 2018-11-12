@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sus2Image.Converter", "Sus2
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sus2Image.Runner", "Sus2Image.Runner\Sus2Image.Runner.csproj", "{51B4474C-EC38-4AAD-BEF5-586907E8A315}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sus2Image.Web", "Sus2Image.Web\Sus2Image.Web.csproj", "{C6047B7B-C183-4CBB-B491-003EBE35BF37}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,8 +23,15 @@ Global
 		{51B4474C-EC38-4AAD-BEF5-586907E8A315}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{51B4474C-EC38-4AAD-BEF5-586907E8A315}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{51B4474C-EC38-4AAD-BEF5-586907E8A315}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C6047B7B-C183-4CBB-B491-003EBE35BF37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C6047B7B-C183-4CBB-B491-003EBE35BF37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C6047B7B-C183-4CBB-B491-003EBE35BF37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C6047B7B-C183-4CBB-B491-003EBE35BF37}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {96C8B148-45A4-4848-B3D9-F20F3F4D7384}
 	EndGlobalSection
 EndGlobal
