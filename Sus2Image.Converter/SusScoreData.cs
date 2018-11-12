@@ -88,7 +88,7 @@ namespace Sus2Image.Converter
                         .Where(s => s.Item2 != "00")
                         .Select(s => Tuple.Create(s.Item2[0], new NotePosition() { Tick = s.Item1, LaneIndex = ConvertHex(r.Groups["laneIndex"].Value[0]), Width = ConvertHex(s.Item2[1]) }));
                 }))
-                .SelectMany(q => FlatSplitLongNotes(q, '1', '2'))
+                .SelectMany(q => p.Key == '2' ? q.GroupBy(r => r.Item2.LaneIndex).SelectMany(r => FlatSplitLongNotes(r, '1', '2')) : FlatSplitLongNotes(q, '1', '2'))
                 .ToList();
             });
 
