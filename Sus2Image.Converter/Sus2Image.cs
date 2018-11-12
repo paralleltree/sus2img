@@ -125,33 +125,21 @@ namespace Sus2Image.Converter
                     using (var beatPen = new Pen(BackgroundColorProfile.BeatLineColor, MeasurementProfile.BorderThickness))
                     using (var barPen = new Pen(BackgroundColorProfile.BarLineColor, MeasurementProfile.BorderThickness))
                     {
-                        // 最初の拍子
-                        int firstBarTick = (int)(TicksPerBeat * sigs[0].Value);
-                        int firstBeatTick = Math.Min(TicksPerBeat, firstBarTick);
-                        for (int i = headTick / firstBeatTick; sigs.Count < 2 || i * firstBeatTick < sigs[1].Key / firstBarTick * firstBarTick; i++)
-                        {
-                            int tick = i * firstBeatTick;
-                            float y = GetYPositionFromTick(tick);
-                            g.DrawLine(tick % firstBarTick == 0 ? barPen : beatPen, 0, y, wholeLaneWidth, y);
-                            if (tick > tailTick) break;
-                        }
-
-                        // その後の拍子
+                        int headPos = 0;
                         int pos = 0;
-                        for (int j = 1; j < sigs.Count; j++)
+                        for (int j = 0; j < sigs.Count; j++)
                         {
-                            int prevBarTick = (int)(TicksPerBeat * sigs[j - 1].Value);
-                            int currentBarTick = (int)(TicksPerBeat * sigs[j].Value);
-                            int currentBeatTick = Math.Min(TicksPerBeat, currentBarTick);
-                            pos += (sigs[j].Key - pos) / prevBarTick * prevBarTick;
-                            if (pos > tailTick) break;
-                            for (int i = headTick - pos < 0 ? 0 : (headTick - pos) / currentBeatTick; pos + i * (int)(TicksPerBeat / sigs[j].Value) < tailTick; i++)
+                            int barTick = (int)(TicksPerBeat * sigs[j].Value);
+                            int beatTick = Math.Min(TicksPerBeat, barTick);
+
+                            while (pos < tailTick)
                             {
-                                if (j < sigs.Count - 1 && i * currentBeatTick >= (sigs[j + 1].Key - pos) / currentBarTick * currentBarTick) break;
-                                int tick = pos + i * currentBeatTick;
-                                float y = GetYPositionFromTick(tick);
-                                g.DrawLine((tick - pos) % currentBarTick == 0 ? barPen : beatPen, 0, y, wholeLaneWidth, y);
+                                if (j < sigs.Count - 1 && pos - headPos >= (sigs[j + 1].Key - headPos) / barTick * barTick) break;
+                                float y = GetYPositionFromTick(pos);
+                                g.DrawLine((pos - headPos) % barTick == 0 ? barPen : beatPen, 0, y, wholeLaneWidth, y);
+                                pos += beatTick;
                             }
+                            headPos = pos;
                         }
                     }
 
