@@ -132,7 +132,7 @@ namespace Sus2Image.Converter
                             int barTick = (int)(TicksPerBeat * sigs[j].Value);
                             int beatTick = Math.Min(TicksPerBeat, barTick);
 
-                            while (pos < tailTick)
+                            while (pos <= tailTick)
                             {
                                 if (j < sigs.Count - 1 && pos - headPos >= (sigs[j + 1].Key - headPos) / barTick * barTick) break;
                                 float y = GetYPositionFromTick(pos);
