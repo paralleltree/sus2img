@@ -65,6 +65,8 @@ namespace Sus2Image.Converter
                 if (matchAction(TimeSignatureCommandPattern.Match(line), m => sigs.Add(int.Parse(m.Groups["barIndex"].Value), double.Parse(m.Groups["value"].Value)))) continue;
             }
 
+            if (!sigs.ContainsKey(0)) sigs.Add(0, 4.0);
+
             var barIndexCalculator = new BarIndexCalculator(TicksPerBeat, sigs);
 
             var bpmDic = bpmData.SelectMany(p => SplitData(barIndexCalculator, int.Parse(p.Groups["barIndex"].Value), p.Groups["data"].Value))
