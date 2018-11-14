@@ -77,6 +77,12 @@ namespace Sus2Image.Converter
                 .ToList();
             });
 
+            foreach (char c in new[] { '1', '5' })
+                FillKey(shortNotes, c, new List<Tuple<char, NotePosition>>());
+
+            foreach (char c in new[] { '2', '3', '4', })
+                FillKey(longNotes, c, new List<List<Tuple<char, NotePosition>>>());
+
 
             return new SusScoreData()
             {
@@ -129,6 +135,11 @@ namespace Sus2Image.Converter
         protected int ConvertHex(char c)
         {
             return c == 'g' ? 16 : Convert.ToInt32(c.ToString(), 16);
+        }
+
+        protected void FillKey<TKey, TValue>(IDictionary<TKey, TValue> dic, TKey key, TValue defaultValue)
+        {
+            if (!dic.ContainsKey(key)) dic.Add(key, defaultValue);
         }
     }
 
