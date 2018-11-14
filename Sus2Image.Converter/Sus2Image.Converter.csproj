@@ -59,6 +59,7 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Sus2Image.cs" />
+    <Compile Include="SusParseException.cs" />
     <Compile Include="SusParser.cs" />
     <Compile Include="SusScoreData.cs" />
   </ItemGroup>
