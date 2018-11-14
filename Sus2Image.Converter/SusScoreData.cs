@@ -19,7 +19,10 @@ namespace Sus2Image.Converter
 
         public int GetLastTick()
         {
-            return Math.Max(ShortNotes.Max(p => p.Value.Max(q => q.Item2.Tick)), LongNotes.Max(p => p.Value.Max(r => r.Max(s => s.Item2.Tick))));
+            return Math.Max(
+                ShortNotes.Count > 0 ? ShortNotes.Max(p => p.Value.Count > 0 ? p.Value.Max(q => q.Item2.Tick) : 0) : 0,
+                LongNotes.Count > 0 ? LongNotes.Max(p => p.Value.Count > 0 ? p.Value.Max(r => r.Max(s => s.Item2.Tick)) : 0) : 0
+                );
         }
     }
 
