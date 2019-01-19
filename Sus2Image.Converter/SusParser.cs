@@ -39,7 +39,7 @@ namespace Sus2Image.Converter
 
                 if (matchAction(SusCommandPattern.Match(line), m => ProcessCommand(m.Groups["name"].Value, m.Groups["value"].Value))) continue;
 
-                if (matchAction(BpmDefinitionPattern.Match(line), m => BpmDefinitions.Add(m.Groups["key"].Value, decimal.Parse(m.Groups["value"].Value)))) continue;
+                if (matchAction(BpmDefinitionPattern.Match(line), m => StoreBpmDefinition(m.Groups["key"].Value, decimal.Parse(m.Groups["value"].Value)))) continue;
 
                 if (matchAction(BpmCommandPattern.Match(line), m => bpmData.Add(m))) continue;
 
@@ -103,6 +103,12 @@ namespace Sus2Image.Converter
                     if (tpb.Success) TicksPerBeat = int.Parse(tpb.Value);
                     break;
             }
+        }
+
+        protected void StoreBpmDefinition(string key, decimal value)
+        {
+            if (BpmDefinitions.ContainsKey(key)) BpmDefinitions[key] = value;
+            else BpmDefinitions.Add(key, value);
         }
 
         // 同一識別子を持つロングノーツのリストをロングノーツ単体に分解します
