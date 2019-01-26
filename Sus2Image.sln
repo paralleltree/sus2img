@@ -7,7 +7,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sus2Image.Converter", "Sus2
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sus2Image.Runner", "Sus2Image.Runner\Sus2Image.Runner.csproj", "{51B4474C-EC38-4AAD-BEF5-586907E8A315}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sus2Image.Web", "Sus2Image.Web\Sus2Image.Web.csproj", "{C6047B7B-C183-4CBB-B491-003EBE35BF37}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sus2Image.Web", "Sus2Image.Web\Sus2Image.Web.csproj", "{C6047B7B-C183-4CBB-B491-003EBE35BF37}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sus2Image.Imaging", "Sus2Image.Imaging\Sus2Image.Imaging.csproj", "{9F2ADE3C-57D6-477F-80D0-B16E60C94735}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{C6047B7B-C183-4CBB-B491-003EBE35BF37}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C6047B7B-C183-4CBB-B491-003EBE35BF37}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C6047B7B-C183-4CBB-B491-003EBE35BF37}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9F2ADE3C-57D6-477F-80D0-B16E60C94735}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9F2ADE3C-57D6-477F-80D0-B16E60C94735}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9F2ADE3C-57D6-477F-80D0-B16E60C94735}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9F2ADE3C-57D6-477F-80D0-B16E60C94735}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

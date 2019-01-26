@@ -4,8 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using Ched.Core.Notes;
-
 namespace Sus2Image.Converter
 {
     public class SusScoreData

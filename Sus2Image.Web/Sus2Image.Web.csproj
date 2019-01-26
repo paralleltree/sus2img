@@ -9,13 +9,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ched.Drawing" Version="2.3.0" />
+    <PackageReference Include="Ched.Drawing" Version="2.4.0" />
     <PackageReference Include="Microsoft.AspNetCore" Version="2.1.4" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.1.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Sus2Image.Converter\Sus2Image.Converter.csproj" />
+    <ProjectReference Include="..\Sus2Image.Imaging\Sus2Image.Imaging.csproj" />
   </ItemGroup>
 
 </Project>

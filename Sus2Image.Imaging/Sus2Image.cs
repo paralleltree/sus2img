@@ -7,11 +7,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using Sus2Image.Converter;
 using ConcurrentPriorityQueue;
 using Ched.Core.Notes;
 using Ched.Drawing;
 
-namespace Sus2Image.Converter
+namespace Sus2Image.Imaging
 {
     public class Sus2Image
     {

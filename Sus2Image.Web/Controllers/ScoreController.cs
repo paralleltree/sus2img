@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 
 using Ched.Drawing;
-using Sus2Image.Converter;
+using Sus2Image.Imaging;
 
 namespace Sus2Image.Web.Controllers
 {
@@ -65,7 +65,7 @@ namespace Sus2Image.Web.Controllers
             {
                 try
                 {
-                    var converter = new Converter.Sus2Image(reader)
+                    var converter = new Imaging.Sus2Image(reader)
                     {
                         NoteColorProfile = noteColorProfile,
                         BackgroundColorProfile = backgroundColorProfile,

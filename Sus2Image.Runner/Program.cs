@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using Ched.Drawing;
-using Sus2Image.Converter;
+using Sus2Image.Imaging;
 
 namespace Sus2Image.Runner
 {
@@ -58,7 +58,7 @@ namespace Sus2Image.Runner
             var stream = new FileStream(src, FileMode.Open);
             using (var reader = new StreamReader(stream))
             {
-                var converter = new Converter.Sus2Image(reader)
+                var converter = new Imaging.Sus2Image(reader)
                 {
                     NoteColorProfile = noteColorProfile,
                     BackgroundColorProfile = backgroundColorProfile,
