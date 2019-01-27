@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sus2Image.Web", "Sus2Image.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sus2Image.Imaging", "Sus2Image.Imaging\Sus2Image.Imaging.csproj", "{9F2ADE3C-57D6-477F-80D0-B16E60C94735}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SusImportPlugin", "SusImportPlugin\SusImportPlugin.csproj", "{807587CE-B967-4D6C-9A0B-9DBBD4DD34D2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{9F2ADE3C-57D6-477F-80D0-B16E60C94735}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F2ADE3C-57D6-477F-80D0-B16E60C94735}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F2ADE3C-57D6-477F-80D0-B16E60C94735}.Release|Any CPU.Build.0 = Release|Any CPU
+		{807587CE-B967-4D6C-9A0B-9DBBD4DD34D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{807587CE-B967-4D6C-9A0B-9DBBD4DD34D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{807587CE-B967-4D6C-9A0B-9DBBD4DD34D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{807587CE-B967-4D6C-9A0B-9DBBD4DD34D2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
