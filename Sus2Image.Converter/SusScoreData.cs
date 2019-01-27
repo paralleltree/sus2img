@@ -12,6 +12,10 @@ namespace Sus2Image.Converter
         public Dictionary<int, decimal> BpmDefinitions { get; set; } = new Dictionary<int, decimal>() { { 0, 120.0m } };
         public Dictionary<int, double> TimeSignatures { get; set; } = new Dictionary<int, double>() { { 0, 4.0 } };
 
+        public string Title { get; set; }
+        public string ArtistName { get; set; }
+        public string DesignerName { get; set; }
+
         public Dictionary<char, List<Tuple<char, NotePosition>>> ShortNotes { get; set; } = new Dictionary<char, List<Tuple<char, NotePosition>>>();
         public Dictionary<char, List<List<Tuple<char, NotePosition>>>> LongNotes { get; set; }
 

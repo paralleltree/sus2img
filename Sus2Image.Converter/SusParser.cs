@@ -18,9 +18,11 @@ namespace Sus2Image.Converter
 
         private int TicksPerBeat = 192;
         private Dictionary<string, decimal> BpmDefinitions = new Dictionary<string, decimal>();
-        private SusScoreData Score = new SusScoreData();
+        private string Title;
+        private string ArtistName;
+        private string DesignerName;
 
-        public SusScoreData Parse(StreamReader reader)
+        public SusScoreData Parse(TextReader reader)
         {
             var sigs = new Dictionary<int, double>();
 
@@ -89,6 +91,9 @@ namespace Sus2Image.Converter
                 TicksPerBeat = this.TicksPerBeat,
                 BpmDefinitions = bpmDic,
                 TimeSignatures = sigs.ToDictionary(p => barIndexCalculator.GetTickFromBarIndex(p.Key), p => p.Value),
+                Title = this.Title,
+                ArtistName = this.ArtistName,
+                DesignerName = this.DesignerName,
                 ShortNotes = shortNotes,
                 LongNotes = longNotes
             };
@@ -98,6 +103,18 @@ namespace Sus2Image.Converter
         {
             switch (name.ToUpper())
             {
+                case "TITLE":
+                    Title = TrimLiteral(value);
+                    break;
+
+                case "ARTIST":
+                    ArtistName = TrimLiteral(value);
+                    break;
+
+                case "DESIGNER":
+                    DesignerName = TrimLiteral(value);
+                    break;
+
                 case "REQUEST":
                     var tpb = Regex.Match(value, @"(?<=ticks_per_beat )\d+");
                     if (tpb.Success) TicksPerBeat = int.Parse(tpb.Value);
@@ -141,6 +158,11 @@ namespace Sus2Image.Converter
         protected int ConvertHex(char c)
         {
             return c == 'g' ? 16 : Convert.ToInt32(c.ToString(), 16);
+        }
+
+        protected string TrimLiteral(string str)
+        {
+            return Regex.Match(str, @"(?<=\""?)[^\""]*").Value;
         }
 
         protected void FillKey<TKey, TValue>(IDictionary<TKey, TValue> dic, TKey key, TValue defaultValue)
