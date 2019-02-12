@@ -21,7 +21,7 @@ namespace Ched.Plugins
 
         public ScoreBook Import(TextReader reader)
         {
-            var sus = new SusParser().Parse(reader);
+            var sus = new SusParser() { IsStrictMode = false }.Parse(reader);
             return new ScoreBook()
             {
                 Title = sus.Title,
@@ -73,6 +73,7 @@ namespace Ched.Plugins
 
             foreach (var hold in raw.LongNotes['2'])
             {
+                if (hold.Count != 2) continue; // 始点終点の対応がない
                 res.Notes.Holds.Add(new Hold()
                 {
                     StartTick = hold[0].Item2.Tick,

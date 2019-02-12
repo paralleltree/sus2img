@@ -16,6 +16,8 @@ namespace Sus2Image.Converter
         private Regex BpmCommandPattern { get; } = new Regex(@"#(?<barIndex>\d{3})08:\s*(?<data>[0-9a-f\s]+)", RegexOptions.IgnoreCase);
         private Regex TimeSignatureCommandPattern { get; } = new Regex(@"(?<barIndex>\d{3})02:\s*(?<value>[0-9.]+)");
 
+        public bool IsStrictMode { get; set; } = true;
+
         private int TicksPerBeat = 192;
         private Dictionary<string, decimal> BpmDefinitions = new Dictionary<string, decimal>();
         private string Title;
@@ -55,7 +57,7 @@ namespace Sus2Image.Converter
             var barIndexCalculator = new BarIndexCalculator(TicksPerBeat, sigs);
 
             var bpmDic = bpmData.SelectMany(p => SplitData(barIndexCalculator, int.Parse(p.Groups["barIndex"].Value), p.Groups["data"].Value))
-                .Where(p => p.Item2 != "00")
+                .Where(p => p.Item2 != "00" && BpmDefinitions.ContainsKey(p.Item2))
                 .ToDictionary(p => p.Item1, p => BpmDefinitions[p.Item2]);
 
             // データ種別と位置
@@ -131,13 +133,22 @@ namespace Sus2Image.Converter
         // 同一識別子を持つロングノーツのリストをロングノーツ単体に分解します
         protected IEnumerable<List<Tuple<char, NotePosition>>> FlatSplitLongNotes(IEnumerable<Tuple<char, NotePosition>> data, char beginChar, char endChar)
         {
-            var enumerator = data.OrderBy(p => p.Item2.Tick).GetEnumerator();
+            var enumerator = data.OrderBy(p => p.Item2.Tick).ThenByDescending(p => p.Item1).GetEnumerator();
             while (enumerator.MoveNext())
             {
-                if (enumerator.Current.Item1 != beginChar) throw new InvalidOperationException();
+                if (enumerator.Current.Item1 != beginChar)
+                {
+                    ThrowException(new InvalidOperationException()); // 始点と終点が対応しない
+                    continue;
+                }
                 var longNote = new List<Tuple<char, NotePosition>>() { enumerator.Current };
                 while (enumerator.MoveNext())
                 {
+                    if (longNote[longNote.Count - 1].Item2.Tick == enumerator.Current.Item2.Tick)
+                    {
+                        ThrowException(new InvalidOperationException()); // 重複Tick
+                        continue;
+                    }
                     longNote.Add(enumerator.Current);
                     if (enumerator.Current.Item1 == endChar) break;
                 }
@@ -168,6 +179,12 @@ namespace Sus2Image.Converter
         protected void FillKey<TKey, TValue>(IDictionary<TKey, TValue> dic, TKey key, TValue defaultValue)
         {
             if (!dic.ContainsKey(key)) dic.Add(key, defaultValue);
+        }
+
+        [System.Diagnostics.DebuggerStepThrough]
+        protected void ThrowException(Exception ex)
+        {
+            if (IsStrictMode) throw ex;
         }
     }
 
