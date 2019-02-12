@@ -11,7 +11,7 @@ namespace Sus2Image.Converter
     public class SusParser
     {
         private Regex SusCommandPattern { get; } = new Regex(@"#(?<name>[A-Z]+)\s+\""?(?<value>[^\""]*)", RegexOptions.IgnoreCase);
-        private Regex SusNotePattern { get; } = new Regex(@"#(?<barIndex>\d{3})(?<type>[1-5])(?<laneIndex>[0-9a-f])(?<longKey>[0-9a-z])?:(?<data>([0-9a-g]{2}|\s)+)", RegexOptions.IgnoreCase);
+        private Regex SusNotePattern { get; } = new Regex(@"#(?<barIndex>\d{3})(?<type>[1-5])(?<laneIndex>[0-9a-f])(?<longKey>[0-9a-z])?:(?<data>([0-9a-gh-z]{2}|\s)+)", RegexOptions.IgnoreCase);
         private Regex BpmDefinitionPattern { get; } = new Regex(@"#BPM(?<key>[0-9a-f]{2}):\s*(?<value>[0-9.]+)", RegexOptions.IgnoreCase);
         private Regex BpmCommandPattern { get; } = new Regex(@"#(?<barIndex>\d{3})08:\s*(?<data>[0-9a-f\s]+)", RegexOptions.IgnoreCase);
         private Regex TimeSignatureCommandPattern { get; } = new Regex(@"(?<barIndex>\d{3})02:\s*(?<value>[0-9.]+)");
@@ -64,7 +64,7 @@ namespace Sus2Image.Converter
             var shortNotes = shortNotesData.GroupBy(p => p.Groups["type"].Value[0]).ToDictionary(p => p.Key, p => p.SelectMany(q =>
             {
                 return SplitData(barIndexCalculator, int.Parse(q.Groups["barIndex"].Value), q.Groups["data"].Value)
-                    .Where(r => r.Item2 != "00")
+                    .Where(r => Regex.IsMatch(r.Item2, "[1-9][1-9a-g]", RegexOptions.IgnoreCase))
                     .Select(r => Tuple.Create(r.Item2[0], new NotePosition() { Tick = r.Item1, LaneIndex = ConvertHex(q.Groups["laneIndex"].Value[0]), Width = ConvertHex(r.Item2[1]) }));
             }).ToList());
 
@@ -74,7 +74,7 @@ namespace Sus2Image.Converter
                 return p.GroupBy(q => q.Groups["longKey"].Value.ToUpper()).Select(q => q.SelectMany(r =>
                 {
                     return SplitData(barIndexCalculator, int.Parse(r.Groups["barIndex"].Value), r.Groups["data"].Value)
-                        .Where(s => s.Item2 != "00")
+                        .Where(s => Regex.IsMatch(s.Item2, "[1-5][1-9a-g]", RegexOptions.IgnoreCase))
                         .Select(s => Tuple.Create(s.Item2[0], new NotePosition() { Tick = s.Item1, LaneIndex = ConvertHex(r.Groups["laneIndex"].Value[0]), Width = ConvertHex(s.Item2[1]) }));
                 }))
                 .SelectMany(q => p.Key == '2' ? q.GroupBy(r => r.Item2.LaneIndex).SelectMany(r => FlatSplitLongNotes(r, '1', '2')) : FlatSplitLongNotes(q, '1', '2'))
