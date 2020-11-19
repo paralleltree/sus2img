@@ -16,7 +16,7 @@ namespace Sus2Image.Converter
         private Regex BpmCommandPattern { get; } = new Regex(@"#(?<barIndex>\d{3})08:\s*(?<data>[0-9a-z\s]+)", RegexOptions.IgnoreCase);
         private Regex TimeSignatureCommandPattern { get; } = new Regex(@"(?<barIndex>\d{3})02:\s*(?<value>[0-9.]+)");
 
-        public bool IsStrictMode { get; set; } = true;
+        public IDiagnosticCollector DiagnosticCollector { get; set; } = new NullDiagnosticCollector();
 
         private int TicksPerBeat = 192;
         private Dictionary<string, decimal> BpmDefinitions = new Dictionary<string, decimal>();
@@ -54,13 +54,32 @@ namespace Sus2Image.Converter
                 if (matchAction(TimeSignatureCommandPattern.Match(line), m => sigs.Add(int.Parse(m.Groups["barIndex"].Value), double.Parse(m.Groups["value"].Value)))) continue;
             }
 
-            if (!sigs.ContainsKey(0)) sigs.Add(0, 4.0);
+            if (!sigs.ContainsKey(0))
+            {
+                sigs.Add(0, 4.0);
+                DiagnosticCollector.ReportInformation("初期拍子定義が存在しないため、4/4拍子に設定します。");
+            }
 
             var barIndexCalculator = new BarIndexCalculator(TicksPerBeat, sigs);
 
             var bpmDic = bpmData.SelectMany(p => SplitData(barIndexCalculator, p.LineIndex, int.Parse(p.Match.Groups["barIndex"].Value), p.Match.Groups["data"].Value).Select(q => new { LineIndex = p.LineIndex, Definition = q }))
-                .Where(p => p.Definition.Data != "00" && BpmDefinitions.ContainsKey(p.Definition.Data.ToLower()))
+                .Where(p =>
+                {
+                    if (p.Definition.Data == "00") return false;
+                    if (!BpmDefinitions.ContainsKey(p.Definition.Data.ToLower()))
+                    {
+                        DiagnosticCollector.ReportWarning($"BPM定義番号{p.Definition.Data}は宣言されていません。このBPM変更は無視されます。(行: {p.LineIndex + 1})");
+                        return false;
+                    }
+                    return true;
+                })
                 .ToDictionary(p => p.Definition.Tick, p => BpmDefinitions[p.Definition.Data.ToLower()]);
+
+            if (!bpmDic.ContainsKey(0))
+            {
+                bpmDic.Add(0, 120);
+                DiagnosticCollector.ReportInformation("初期BPM定義が存在しないため、120に設定します。");
+            }
 
             // データ種別と位置
             var shortNotes = shortNotesData.GroupBy(p => p.Match.Groups["type"].Value[0]).ToDictionary(p => p.Key, p => p.SelectMany(q =>
@@ -121,7 +140,19 @@ namespace Sus2Image.Converter
 
                 case "REQUEST":
                     var tpb = Regex.Match(value, @"(?<=ticks_per_beat )\d+");
-                    if (tpb.Success) TicksPerBeat = int.Parse(tpb.Value);
+                    if (tpb.Success)
+                    {
+                        TicksPerBeat = int.Parse(tpb.Value);
+                        DiagnosticCollector.ReportInformation($"ticks per beatを{TicksPerBeat}に変更しました。");
+                    }
+                    else
+                    {
+                        DiagnosticCollector.ReportWarning($"処理されないREQUESTコマンドです。(行: {lineIndex + 1})");
+                    }
+                    break;
+
+                default:
+                    DiagnosticCollector.ReportWarning($"{name}コマンドは処理されません。(行: {lineIndex + 1})");
                     break;
             }
         }
@@ -129,8 +160,18 @@ namespace Sus2Image.Converter
         protected void StoreBpmDefinition(int lineIndex, string key, decimal value)
         {
             key = key.ToLower();
-            if (BpmDefinitions.ContainsKey(key)) BpmDefinitions[key] = value;
-            else BpmDefinitions.Add(key, value);
+            if (key == "00")
+            {
+                DiagnosticCollector.ReportWarning($"BPM定義番号00は無効です。この定義は無視されます。(行: {lineIndex + 1}, BPM値: {value})");
+                return;
+            }
+            if (BpmDefinitions.ContainsKey(key))
+            {
+                DiagnosticCollector.ReportWarning($"重複したBPM定義です。先行する定義を上書きします。(行: {lineIndex + 1}, 定義番号: {key})");
+                BpmDefinitions[key] = value;
+                return;
+            }
+            BpmDefinitions.Add(key, value);
         }
 
         // 同一識別子を持つロングノーツのリストをロングノーツ単体に分解します
@@ -141,19 +182,28 @@ namespace Sus2Image.Converter
             {
                 if (enumerator.Current.Type != beginChar)
                 {
-                    ThrowException(new InvalidOperationException()); // 始点と終点が対応しない
+                    DiagnosticCollector.ReportWarning($"終点に対応する始点がありません。このロングノート定義は無視されます。(行: {enumerator.Current.LineIndex + 1}, 種類: {enumerator.Current.Type})");
                     continue;
                 }
                 var longNote = new List<NoteDefinition>() { enumerator.Current };
                 while (enumerator.MoveNext())
                 {
+                    if (enumerator.Current.Type == beginChar)
+                    {
+                        DiagnosticCollector.ReportWarning($"始点に対応する終点がありません。このロングノート開始定義は無視されます。(行: {enumerator.Current.LineIndex + 1}, 種類: {enumerator.Current.Type})");
+                        continue;
+                    }
                     if (longNote[longNote.Count - 1].Position.Tick == enumerator.Current.Position.Tick)
                     {
-                        ThrowException(new InvalidOperationException()); // 重複Tick
+                        DiagnosticCollector.ReportWarning($"同一の時刻に定義が重複しています。このロングノート定義は無視されます。(行: {enumerator.Current.LineIndex + 1}, 種類: {enumerator.Current.Type})");
                         continue;
                     }
                     longNote.Add(enumerator.Current);
                     if (enumerator.Current.Type == endChar) break;
+                }
+                if (enumerator.Current.Type != endChar)
+                {
+                    DiagnosticCollector.ReportWarning($"始点に対応する終点がありません。このロングノート定義は無視されます。(行: {enumerator.Current.LineIndex + 1}, 種類: {enumerator.Current.Type})");
                 }
 
                 yield return longNote;
@@ -163,6 +213,10 @@ namespace Sus2Image.Converter
         protected IEnumerable<(int Tick, string Data)> SplitData(BarIndexCalculator c, int lineIndex, int barIndex, string data)
         {
             data = Regex.Replace(data, @"\s+", "");
+            if (data.Length % 2 != 0)
+            {
+                DiagnosticCollector.ReportWarning($"データ定義の文字列長が2の倍数ではありません。終端部分は無視されます。(行: {lineIndex + 1})");
+            }
             int headTick = c.GetTickFromBarIndex(barIndex);
             int barTick = (int)(c.GetBarBeatsFromBarIndex(barIndex) * TicksPerBeat);
             var list = Enumerable.Range(0, data.Length / 2).Select(p => data.Substring(p * 2, 2)).ToList();
@@ -183,12 +237,6 @@ namespace Sus2Image.Converter
         protected void FillKey<TKey, TValue>(IDictionary<TKey, TValue> dic, TKey key, TValue defaultValue)
         {
             if (!dic.ContainsKey(key)) dic.Add(key, defaultValue);
-        }
-
-        [System.Diagnostics.DebuggerStepThrough]
-        protected void ThrowException(Exception ex)
-        {
-            if (IsStrictMode) throw ex;
         }
     }
 

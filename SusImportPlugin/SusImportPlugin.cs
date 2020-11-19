@@ -21,7 +21,7 @@ namespace Ched.Plugins
 
         public ScoreBook Import(TextReader reader)
         {
-            var sus = new SusParser() { IsStrictMode = false }.Parse(reader);
+            var sus = new SusParser().Parse(reader);
             return new ScoreBook()
             {
                 Title = sus.Title,
