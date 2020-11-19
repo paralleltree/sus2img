@@ -58,9 +58,9 @@ namespace Sus2Image.Imaging
             var emptyLong = Enumerable.Empty<List<NoteDefinition>>();
 
             bool visibleStep(NoteDefinition p) => p.Type == '1' || p.Type == '2' || p.Type == '3';
-            Action<Graphics> moveToOrigin = g => g.TranslateTransform(MeasurementProfile.PaddingWidth, paddingHeight + columnHeight - 1, MatrixOrder.Append);
-            Action<Graphics, int> moveToColumn = (g, columnsCount) => g.TranslateTransform((MeasurementProfile.PaddingWidth * 2 + wholeLaneWidth) * columnsCount, 0, MatrixOrder.Append);
-            Action<Graphics, int> moveToHead = (g, head) => g.TranslateTransform(0, head * MeasurementProfile.UnitBeatHeight / TicksPerBeat, MatrixOrder.Append);
+            void moveToOrigin(Graphics g) => g.TranslateTransform(MeasurementProfile.PaddingWidth, paddingHeight + columnHeight - 1, MatrixOrder.Append);
+            void moveToColumn(Graphics g, int columnsCount) => g.TranslateTransform((MeasurementProfile.PaddingWidth * 2 + wholeLaneWidth) * columnsCount, 0, MatrixOrder.Append);
+            void moveToHead(Graphics g, int head) => g.TranslateTransform(0, head * MeasurementProfile.UnitBeatHeight / TicksPerBeat, MatrixOrder.Append);
 
             using (var g = Graphics.FromImage(bmp))
             {
@@ -209,11 +209,11 @@ namespace Sus2Image.Imaging
                     }
 
                     var shortNotesDic = usingShortNoteQueues['1'].GroupBy(p => p.Type).ToDictionary(p => p.Key, p => p.Select(q => q.Position));
-                    Action<char, Action<NotePosition>> drawNotes = (key, drawer) =>
+                    void drawNotes(char key, Action<NotePosition> drawer)
                     {
                         if (!shortNotesDic.ContainsKey(key)) return;
                         foreach (var item in shortNotesDic[key]) drawer(item);
-                    };
+                    }
 
                     drawNotes('1', item => dc.DrawTap(GetRectFromNotePosition(item)));
                     drawNotes('2', item => dc.DrawExTap(GetRectFromNotePosition(item)));

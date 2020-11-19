@@ -31,11 +31,11 @@ namespace Sus2Image.Converter
             var shortNotesData = new List<(int LineIndex, Match Match)>();
             var longNotesData = new List<(int LineIndex, Match Match)>();
             var bpmData = new List<(int LineIndex, Match Match)>();
-            Func<Match, Action<Match>, bool> matchAction = (m, act) =>
+            bool matchAction(Match m, Action<Match> act)
             {
                 if (m.Success) act(m);
                 return m.Success;
-            };
+            }
 
             int lineIndex = -1;
             while (reader.Peek() >= 0)
