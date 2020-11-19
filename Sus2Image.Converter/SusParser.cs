@@ -28,26 +28,28 @@ namespace Sus2Image.Converter
         {
             var sigs = new Dictionary<int, double>();
 
-            var shortNotesData = new List<Match>();
-            var longNotesData = new List<Match>();
-            var bpmData = new List<Match>();
+            var shortNotesData = new List<(int LineIndex, Match Match)>();
+            var longNotesData = new List<(int LineIndex, Match Match)>();
+            var bpmData = new List<(int LineIndex, Match Match)>();
             Func<Match, Action<Match>, bool> matchAction = (m, act) =>
             {
                 if (m.Success) act(m);
                 return m.Success;
             };
 
+            int lineIndex = -1;
             while (reader.Peek() >= 0)
             {
                 string line = reader.ReadLine();
+                lineIndex++;
 
-                if (matchAction(SusCommandPattern.Match(line), m => ProcessCommand(m.Groups["name"].Value, m.Groups["value"].Value))) continue;
+                if (matchAction(SusCommandPattern.Match(line), m => ProcessCommand(lineIndex, m.Groups["name"].Value, m.Groups["value"].Value))) continue;
 
-                if (matchAction(BpmDefinitionPattern.Match(line), m => StoreBpmDefinition(m.Groups["key"].Value, decimal.Parse(m.Groups["value"].Value)))) continue;
+                if (matchAction(BpmDefinitionPattern.Match(line), m => StoreBpmDefinition(lineIndex, m.Groups["key"].Value, decimal.Parse(m.Groups["value"].Value)))) continue;
 
-                if (matchAction(BpmCommandPattern.Match(line), m => bpmData.Add(m))) continue;
+                if (matchAction(BpmCommandPattern.Match(line), m => bpmData.Add((lineIndex, m)))) continue;
 
-                if (matchAction(SusNotePattern.Match(line), m => (m.Groups["longKey"].Success ? longNotesData : shortNotesData).Add(m))) continue;
+                if (matchAction(SusNotePattern.Match(line), m => (m.Groups["longKey"].Success ? longNotesData : shortNotesData).Add((lineIndex, m)))) continue;
 
                 if (matchAction(TimeSignatureCommandPattern.Match(line), m => sigs.Add(int.Parse(m.Groups["barIndex"].Value), double.Parse(m.Groups["value"].Value)))) continue;
             }
@@ -56,36 +58,36 @@ namespace Sus2Image.Converter
 
             var barIndexCalculator = new BarIndexCalculator(TicksPerBeat, sigs);
 
-            var bpmDic = bpmData.SelectMany(p => SplitData(barIndexCalculator, int.Parse(p.Groups["barIndex"].Value), p.Groups["data"].Value))
-                .Where(p => p.Item2 != "00" && BpmDefinitions.ContainsKey(p.Item2))
-                .ToDictionary(p => p.Item1, p => BpmDefinitions[p.Item2]);
+            var bpmDic = bpmData.SelectMany(p => SplitData(barIndexCalculator, p.LineIndex, int.Parse(p.Match.Groups["barIndex"].Value), p.Match.Groups["data"].Value).Select(q => new { LineIndex = p.LineIndex, Definition = q }))
+                .Where(p => p.Definition.Data != "00" && BpmDefinitions.ContainsKey(p.Definition.Data))
+                .ToDictionary(p => p.Definition.Tick, p => BpmDefinitions[p.Definition.Data]);
 
             // データ種別と位置
-            var shortNotes = shortNotesData.GroupBy(p => p.Groups["type"].Value[0]).ToDictionary(p => p.Key, p => p.SelectMany(q =>
+            var shortNotes = shortNotesData.GroupBy(p => p.Match.Groups["type"].Value[0]).ToDictionary(p => p.Key, p => p.SelectMany(q =>
             {
-                return SplitData(barIndexCalculator, int.Parse(q.Groups["barIndex"].Value), q.Groups["data"].Value)
-                    .Where(r => Regex.IsMatch(r.Item2, "[1-9][1-9a-g]", RegexOptions.IgnoreCase))
-                    .Select(r => Tuple.Create(r.Item2[0], new NotePosition() { Tick = r.Item1, LaneIndex = ConvertHex(q.Groups["laneIndex"].Value[0]), Width = ConvertHex(r.Item2[1]) }));
+                return SplitData(barIndexCalculator, q.LineIndex, int.Parse(q.Match.Groups["barIndex"].Value), q.Match.Groups["data"].Value)
+                    .Where(r => Regex.IsMatch(r.Data, "[1-9][1-9a-g]", RegexOptions.IgnoreCase))
+                    .Select(r => new NoteDefinition() { LineIndex = q.LineIndex, Type = r.Data[0], Position = new NotePosition() { Tick = r.Tick, LaneIndex = ConvertHex(q.Match.Groups["laneIndex"].Value[0]), Width = ConvertHex(r.Data[1]) } });
             }).ToList());
 
             // ロング種別 -> ロングノーツリスト -> 構成点リスト
-            var longNotes = longNotesData.GroupBy(p => p.Groups["type"].Value[0]).ToDictionary(p => p.Key, p =>
+            var longNotes = longNotesData.GroupBy(p => p.Match.Groups["type"].Value[0]).ToDictionary(p => p.Key, p =>
             {
-                return p.GroupBy(q => q.Groups["longKey"].Value.ToUpper()).Select(q => q.SelectMany(r =>
+                return p.GroupBy(q => q.Match.Groups["longKey"].Value.ToUpper()).Select(q => q.SelectMany(r =>
                 {
-                    return SplitData(barIndexCalculator, int.Parse(r.Groups["barIndex"].Value), r.Groups["data"].Value)
-                        .Where(s => Regex.IsMatch(s.Item2, "[1-5][1-9a-g]", RegexOptions.IgnoreCase))
-                        .Select(s => Tuple.Create(s.Item2[0], new NotePosition() { Tick = s.Item1, LaneIndex = ConvertHex(r.Groups["laneIndex"].Value[0]), Width = ConvertHex(s.Item2[1]) }));
+                    return SplitData(barIndexCalculator, lineIndex, int.Parse(r.Match.Groups["barIndex"].Value), r.Match.Groups["data"].Value)
+                        .Where(s => Regex.IsMatch(s.Data, "[1-5][1-9a-g]", RegexOptions.IgnoreCase))
+                        .Select(s => new NoteDefinition() { LineIndex = r.LineIndex, Type = s.Data[0], Position = new NotePosition() { Tick = s.Tick, LaneIndex = ConvertHex(r.Match.Groups["laneIndex"].Value[0]), Width = ConvertHex(s.Data[1]) } });
                 }))
-                .SelectMany(q => p.Key == '2' ? q.GroupBy(r => r.Item2.LaneIndex).SelectMany(r => FlatSplitLongNotes(r, '1', '2')) : FlatSplitLongNotes(q, '1', '2'))
+                .SelectMany(q => p.Key == '2' ? q.GroupBy(r => r.Position.LaneIndex).SelectMany(r => FlatSplitLongNotes(r, '1', '2')) : FlatSplitLongNotes(q, '1', '2'))
                 .ToList();
             });
 
             foreach (char c in new[] { '1', '5' })
-                FillKey(shortNotes, c, new List<Tuple<char, NotePosition>>());
+                FillKey(shortNotes, c, new List<NoteDefinition>());
 
             foreach (char c in new[] { '2', '3', '4', })
-                FillKey(longNotes, c, new List<List<Tuple<char, NotePosition>>>());
+                FillKey(longNotes, c, new List<List<NoteDefinition>>());
 
 
             return new SusScoreData()
@@ -101,7 +103,7 @@ namespace Sus2Image.Converter
             };
         }
 
-        protected void ProcessCommand(string name, string value)
+        protected void ProcessCommand(int lineIndex, string name, string value)
         {
             switch (name.ToUpper())
             {
@@ -124,46 +126,46 @@ namespace Sus2Image.Converter
             }
         }
 
-        protected void StoreBpmDefinition(string key, decimal value)
+        protected void StoreBpmDefinition(int lineIndex, string key, decimal value)
         {
             if (BpmDefinitions.ContainsKey(key)) BpmDefinitions[key] = value;
             else BpmDefinitions.Add(key, value);
         }
 
         // 同一識別子を持つロングノーツのリストをロングノーツ単体に分解します
-        protected IEnumerable<List<Tuple<char, NotePosition>>> FlatSplitLongNotes(IEnumerable<Tuple<char, NotePosition>> data, char beginChar, char endChar)
+        protected IEnumerable<List<NoteDefinition>> FlatSplitLongNotes(IEnumerable<NoteDefinition> data, char beginChar, char endChar)
         {
-            var enumerator = data.OrderBy(p => p.Item2.Tick).ThenByDescending(p => p.Item1).GetEnumerator();
+            var enumerator = data.OrderBy(p => p.Position.Tick).ThenByDescending(p => p.Type).GetEnumerator();
             while (enumerator.MoveNext())
             {
-                if (enumerator.Current.Item1 != beginChar)
+                if (enumerator.Current.Type != beginChar)
                 {
                     ThrowException(new InvalidOperationException()); // 始点と終点が対応しない
                     continue;
                 }
-                var longNote = new List<Tuple<char, NotePosition>>() { enumerator.Current };
+                var longNote = new List<NoteDefinition>() { enumerator.Current };
                 while (enumerator.MoveNext())
                 {
-                    if (longNote[longNote.Count - 1].Item2.Tick == enumerator.Current.Item2.Tick)
+                    if (longNote[longNote.Count - 1].Position.Tick == enumerator.Current.Position.Tick)
                     {
                         ThrowException(new InvalidOperationException()); // 重複Tick
                         continue;
                     }
                     longNote.Add(enumerator.Current);
-                    if (enumerator.Current.Item1 == endChar) break;
+                    if (enumerator.Current.Type == endChar) break;
                 }
 
                 yield return longNote;
             }
         }
 
-        protected IEnumerable<Tuple<int, string>> SplitData(BarIndexCalculator c, int barIndex, string data)
+        protected IEnumerable<(int Tick, string Data)> SplitData(BarIndexCalculator c, int lineIndex, int barIndex, string data)
         {
             data = Regex.Replace(data, @"\s+", "");
             int headTick = c.GetTickFromBarIndex(barIndex);
             int barTick = (int)(c.GetBarBeatsFromBarIndex(barIndex) * TicksPerBeat);
             var list = Enumerable.Range(0, data.Length / 2).Select(p => data.Substring(p * 2, 2)).ToList();
-            return list.Select((p, i) => Tuple.Create(headTick + (int)(barTick * ((double)i / list.Count)), p));
+            return list.Select((p, i) => (headTick + (int)(barTick * ((double)i / list.Count)), p));
         }
 
         protected int ConvertHex(char c)

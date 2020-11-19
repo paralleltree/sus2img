@@ -49,24 +49,24 @@ namespace Ched.Plugins
 
             foreach (var item in raw.ShortNotes['1'])
             {
-                switch (item.Item1)
+                switch (item.Type)
                 {
                     case '1':
-                        res.Notes.Taps.Add(SetNotePosition(new Tap(), item.Item2));
+                        res.Notes.Taps.Add(SetNotePosition(new Tap(), item.Position));
                         break;
 
                     case '2':
                     case '5':
                     case '6':
-                        res.Notes.ExTaps.Add(SetNotePosition(new ExTap(), item.Item2));
+                        res.Notes.ExTaps.Add(SetNotePosition(new ExTap(), item.Position));
                         break;
 
                     case '3':
-                        res.Notes.Flicks.Add(SetNotePosition(new Flick(), item.Item2));
+                        res.Notes.Flicks.Add(SetNotePosition(new Flick(), item.Position));
                         break;
 
                     case '4':
-                        res.Notes.Damages.Add(SetNotePosition(new Damage(), item.Item2));
+                        res.Notes.Damages.Add(SetNotePosition(new Damage(), item.Position));
                         break;
                 }
             }
@@ -76,10 +76,10 @@ namespace Ched.Plugins
                 if (hold.Count != 2) continue; // 始点終点の対応がない
                 res.Notes.Holds.Add(new Hold()
                 {
-                    StartTick = hold[0].Item2.Tick,
-                    Duration = hold[1].Item2.Tick - hold[0].Item2.Tick,
-                    LaneIndex = hold[0].Item2.LaneIndex,
-                    Width = hold[0].Item2.Width
+                    StartTick = hold[0].Position.Tick,
+                    Duration = hold[1].Position.Tick - hold[0].Position.Tick,
+                    LaneIndex = hold[0].Position.LaneIndex,
+                    Width = hold[0].Position.Width
                 });
             }
 
@@ -87,18 +87,18 @@ namespace Ched.Plugins
             {
                 var slide = new Slide()
                 {
-                    StartTick = steps[0].Item2.Tick,
-                    StartLaneIndex = steps[0].Item2.LaneIndex,
-                    StartWidth = steps[0].Item2.Width
+                    StartTick = steps[0].Position.Tick,
+                    StartLaneIndex = steps[0].Position.LaneIndex,
+                    StartWidth = steps[0].Position.Width
                 };
                 foreach (var step in steps.Skip(1))
                 {
                     var stepTap = new Slide.StepTap(slide)
                     {
-                        IsVisible = step.Item1 == '3' || step.Item1 == '2',
-                        TickOffset = step.Item2.Tick - slide.StartTick
+                        IsVisible = step.Type == '3' || step.Type == '2',
+                        TickOffset = step.Position.Tick - slide.StartTick
                     };
-                    stepTap.SetPosition(step.Item2.LaneIndex - slide.StartLaneIndex, step.Item2.Width - slide.StartWidth);
+                    stepTap.SetPosition(step.Position.LaneIndex - slide.StartLaneIndex, step.Position.Width - slide.StartWidth);
                     slide.StepNotes.Add(stepTap);
                 }
                 res.Notes.Slides.Add(slide);
@@ -114,12 +114,12 @@ namespace Ched.Plugins
             var usedAirs = new HashSet<IAirable>();
             foreach (var item in raw.ShortNotes['5'])
             {
-                if (!airablesDic.ContainsKey(item.Item2)) continue;
-                foreach (var airable in airablesDic[item.Item2])
+                if (!airablesDic.ContainsKey(item.Position)) continue;
+                foreach (var airable in airablesDic[item.Position])
                 {
                     if (usedAirs.Contains(airable)) continue;
-                    var air = new Air(airable) { VerticalDirection = Regex.IsMatch(item.Item1.ToString(), "1|3|4") ? VerticalAirDirection.Up : VerticalAirDirection.Down };
-                    switch (item.Item1)
+                    var air = new Air(airable) { VerticalDirection = Regex.IsMatch(item.Type.ToString(), "1|3|4") ? VerticalAirDirection.Up : VerticalAirDirection.Down };
+                    switch (item.Type)
                     {
                         case '1':
                         case '2':
@@ -145,12 +145,12 @@ namespace Ched.Plugins
             var usedAirActions = new HashSet<IAirable>();
             foreach (var item in raw.LongNotes['4'])
             {
-                if (!airablesDic.ContainsKey(item[0].Item2)) continue;
-                foreach (var airable in airablesDic[item[0].Item2])
+                if (!airablesDic.ContainsKey(item[0].Position)) continue;
+                foreach (var airable in airablesDic[item[0].Position])
                 {
                     if (usedAirActions.Contains(airable)) continue;
                     var airAction = new AirAction(airable);
-                    airAction.ActionNotes.AddRange(item.Skip(1).Select(p => new AirAction.ActionNote(airAction) { Offset = p.Item2.Tick - item[0].Item2.Tick }));
+                    airAction.ActionNotes.AddRange(item.Skip(1).Select(p => new AirAction.ActionNote(airAction) { Offset = p.Position.Tick - item[0].Position.Tick }));
                     res.Notes.AirActions.Add(airAction);
                     usedAirActions.Add(airable);
                     break;

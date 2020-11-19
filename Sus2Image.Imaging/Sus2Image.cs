@@ -40,24 +40,24 @@ namespace Sus2Image.Imaging
             int headTick = 0;
 
             var bmp = new Bitmap((int)(MeasurementProfile.PaddingWidth * 2 + wholeLaneWidth) * (int)Math.Ceiling((double)Score.GetLastTick() / columnTick), (int)(paddingHeight * 2 + columnHeight));
-            var longEndsPos = new HashSet<NotePosition>(Score.LongNotes['2'].Concat(Score.LongNotes['3']).Select(p => p.Last().Item2));
+            var longEndsPos = new HashSet<NotePosition>(Score.LongNotes['2'].Concat(Score.LongNotes['3']).Select(p => p.Last().Position));
             var unUsedShortNoteQueues = Score.ShortNotes.ToDictionary(p => p.Key, p =>
             {
-                var q = new ConcurrentPriorityQueue<Tuple<char, NotePosition>, int>();
-                foreach (var item in p.Value) q.Enqueue(item, -item.Item2.Tick);
+                var q = new ConcurrentPriorityQueue<NoteDefinition, int>();
+                foreach (var item in p.Value) q.Enqueue(item, -item.Position.Tick);
                 return q;
             });
-            var usingShortNoteQueues = Score.ShortNotes.ToDictionary(p => p.Key, p => new ConcurrentPriorityQueue<Tuple<char, NotePosition>, int>());
+            var usingShortNoteQueues = Score.ShortNotes.ToDictionary(p => p.Key, p => new ConcurrentPriorityQueue<NoteDefinition, int>());
             var unUsedLongNoteQueues = Score.LongNotes.ToDictionary(p => p.Key, p =>
             {
-                var q = new ConcurrentPriorityQueue<List<Tuple<char, NotePosition>>, int>();
-                foreach (var item in p.Value) q.Enqueue(item, -item[0].Item2.Tick);
+                var q = new ConcurrentPriorityQueue<List<NoteDefinition>, int>();
+                foreach (var item in p.Value) q.Enqueue(item, -item[0].Position.Tick);
                 return q;
             });
-            var usingLongNoteQueues = Score.LongNotes.ToDictionary(p => p.Key, p => new ConcurrentPriorityQueue<List<Tuple<char, NotePosition>>, int>());
-            var emptyLong = Enumerable.Empty<List<Tuple<char, NotePosition>>>();
+            var usingLongNoteQueues = Score.LongNotes.ToDictionary(p => p.Key, p => new ConcurrentPriorityQueue<List<NoteDefinition>, int>());
+            var emptyLong = Enumerable.Empty<List<NoteDefinition>>();
 
-            Func<Tuple<char, NotePosition>, bool> visibleStep = p => p.Item1 == '1' || p.Item1 == '2' || p.Item1 == '3';
+            bool visibleStep(NoteDefinition p) => p.Type == '1' || p.Type == '2' || p.Type == '3';
             Action<Graphics> moveToOrigin = g => g.TranslateTransform(MeasurementProfile.PaddingWidth, paddingHeight + columnHeight - 1, MatrixOrder.Append);
             Action<Graphics, int> moveToColumn = (g, columnsCount) => g.TranslateTransform((MeasurementProfile.PaddingWidth * 2 + wholeLaneWidth) * columnsCount, 0, MatrixOrder.Append);
             Action<Graphics, int> moveToHead = (g, head) => g.TranslateTransform(0, head * MeasurementProfile.UnitBeatHeight / TicksPerBeat, MatrixOrder.Append);
@@ -76,30 +76,30 @@ namespace Sus2Image.Imaging
                     // 範囲外に出たノーツの更新
                     foreach (var type in usingShortNoteQueues)
                     {
-                        while (type.Value.Count > 0 && type.Value.Peek().Item2.Tick < headTick - paddingTick) type.Value.Dequeue();
+                        while (type.Value.Count > 0 && type.Value.Peek().Position.Tick < headTick - paddingTick) type.Value.Dequeue();
                     }
 
                     foreach (var type in usingLongNoteQueues)
                     {
-                        while (type.Value.Count > 0 && type.Value.Peek()[type.Value.Peek().Count - 1].Item2.Tick < headTick - paddingTick) type.Value.Dequeue();
+                        while (type.Value.Count > 0 && type.Value.Peek()[type.Value.Peek().Count - 1].Position.Tick < headTick - paddingTick) type.Value.Dequeue();
                     }
 
                     // 範囲内に入るノーツの更新
                     foreach (var type in unUsedShortNoteQueues)
                     {
-                        while (type.Value.Count > 0 && type.Value.Peek().Item2.Tick < tailTick + paddingTick)
+                        while (type.Value.Count > 0 && type.Value.Peek().Position.Tick < tailTick + paddingTick)
                         {
                             var item = type.Value.Dequeue();
-                            usingShortNoteQueues[type.Key].Enqueue(item, -item.Item2.Tick);
+                            usingShortNoteQueues[type.Key].Enqueue(item, -item.Position.Tick);
                         }
                     }
 
                     foreach (var type in unUsedLongNoteQueues)
                     {
-                        while (type.Value.Count > 0 && type.Value.Peek()[0].Item2.Tick < tailTick + paddingTick)
+                        while (type.Value.Count > 0 && type.Value.Peek()[0].Position.Tick < tailTick + paddingTick)
                         {
                             var item = type.Value.Dequeue();
-                            usingLongNoteQueues[type.Key].Enqueue(item, -item[item.Count - 1].Item2.Tick);
+                            usingLongNoteQueues[type.Key].Enqueue(item, -item[item.Count - 1].Position.Tick);
                         }
                     }
 
@@ -149,10 +149,10 @@ namespace Sus2Image.Imaging
                     foreach (var hold in usingLongNoteQueues.ContainsKey('2') ? usingLongNoteQueues['2'] : emptyLong)
                     {
                         dc.DrawHoldBackground(new RectangleF(
-                            (MeasurementProfile.UnitLaneWidth + MeasurementProfile.BorderThickness) * hold[0].Item2.LaneIndex + MeasurementProfile.BorderThickness,
-                            GetYPositionFromTick(hold[0].Item2.Tick),
-                            (MeasurementProfile.UnitLaneWidth + MeasurementProfile.BorderThickness) * hold[0].Item2.Width - MeasurementProfile.BorderThickness,
-                            GetYPositionFromTick(hold[1].Item2.Tick - hold[0].Item2.Tick)
+                            (MeasurementProfile.UnitLaneWidth + MeasurementProfile.BorderThickness) * hold[0].Position.LaneIndex + MeasurementProfile.BorderThickness,
+                            GetYPositionFromTick(hold[0].Position.Tick),
+                            (MeasurementProfile.UnitLaneWidth + MeasurementProfile.BorderThickness) * hold[0].Position.Width - MeasurementProfile.BorderThickness,
+                            GetYPositionFromTick(hold[1].Position.Tick - hold[0].Position.Tick)
                             ));
                     }
 
@@ -162,14 +162,14 @@ namespace Sus2Image.Imaging
                         for (int i = 0; i < slide.Count - 1; i++)
                         {
                             dc.DrawSlideBackground(
-                                laneWidth * slide[i].Item2.Width - MeasurementProfile.BorderThickness,
-                                laneWidth * slide[i + 1].Item2.Width - MeasurementProfile.BorderThickness,
-                                laneWidth * slide[i].Item2.LaneIndex,
-                                GetYPositionFromTick(slide[i].Item2.Tick),
-                                laneWidth * slide[i + 1].Item2.LaneIndex,
-                                GetYPositionFromTick(slide[i + 1].Item2.Tick) + 0.4f,
-                                GetYPositionFromTick(visibleSteps.Last(p => p.Item2.Tick <= slide[i].Item2.Tick).Item2.Tick),
-                                GetYPositionFromTick(visibleSteps.First(p => p.Item2.Tick >= slide[i + 1].Item2.Tick).Item2.Tick),
+                                laneWidth * slide[i].Position.Width - MeasurementProfile.BorderThickness,
+                                laneWidth * slide[i + 1].Position.Width - MeasurementProfile.BorderThickness,
+                                laneWidth * slide[i].Position.LaneIndex,
+                                GetYPositionFromTick(slide[i].Position.Tick),
+                                laneWidth * slide[i + 1].Position.LaneIndex,
+                                GetYPositionFromTick(slide[i + 1].Position.Tick) + 0.4f,
+                                GetYPositionFromTick(visibleSteps.Last(p => p.Position.Tick <= slide[i].Position.Tick).Position.Tick),
+                                GetYPositionFromTick(visibleSteps.First(p => p.Position.Tick >= slide[i + 1].Position.Tick).Position.Tick),
                                 MeasurementProfile.ShortNoteHeight);
                         }
                     }
@@ -177,38 +177,38 @@ namespace Sus2Image.Imaging
                     foreach (var airAction in usingLongNoteQueues.ContainsKey('4') ? usingLongNoteQueues['4'] : emptyLong)
                     {
                         dc.DrawAirHoldLine(
-                            laneWidth * (airAction[0].Item2.LaneIndex + airAction[0].Item2.Width / 2f),
-                            GetYPositionFromTick(airAction[0].Item2.Tick),
-                            GetYPositionFromTick(airAction[airAction.Count - 1].Item2.Tick),
+                            laneWidth * (airAction[0].Position.LaneIndex + airAction[0].Position.Width / 2f),
+                            GetYPositionFromTick(airAction[0].Position.Tick),
+                            GetYPositionFromTick(airAction[airAction.Count - 1].Position.Tick),
                             MeasurementProfile.ShortNoteHeight);
                     }
 
                     foreach (var hold in usingLongNoteQueues.ContainsKey('2') ? usingLongNoteQueues['2'] : emptyLong)
                     {
-                        dc.DrawHoldBegin(GetRectFromNotePosition(hold[0].Item2));
-                        dc.DrawHoldEnd(GetRectFromNotePosition(hold[hold.Count - 1].Item2));
+                        dc.DrawHoldBegin(GetRectFromNotePosition(hold[0].Position));
+                        dc.DrawHoldEnd(GetRectFromNotePosition(hold[hold.Count - 1].Position));
                     }
 
                     foreach (var slide in usingLongNoteQueues.ContainsKey('3') ? usingLongNoteQueues['3'] : emptyLong)
                     {
-                        dc.DrawSlideBegin(GetRectFromNotePosition(slide[0].Item2));
+                        dc.DrawSlideBegin(GetRectFromNotePosition(slide[0].Position));
                         foreach (var item in slide.Where(visibleStep).Skip(1))
                         {
-                            if (item.Item2.Tick < headTick - paddingTick) continue;
-                            if (item.Item2.Tick > tailTick + paddingTick) break;
-                            dc.DrawSlideStep(GetRectFromNotePosition(item.Item2));
+                            if (item.Position.Tick < headTick - paddingTick) continue;
+                            if (item.Position.Tick > tailTick + paddingTick) break;
+                            dc.DrawSlideStep(GetRectFromNotePosition(item.Position));
                         }
                     }
 
                     // ロング終点AIR
-                    var airs = usingShortNoteQueues.ContainsKey('5') ? usingShortNoteQueues['5'] : Enumerable.Empty<Tuple<char, NotePosition>>();
+                    var airs = usingShortNoteQueues.ContainsKey('5') ? usingShortNoteQueues['5'] : Enumerable.Empty<NoteDefinition>();
                     foreach (var air in airs)
                     {
-                        if (!longEndsPos.Contains(air.Item2)) continue;
-                        dc.DrawAirStep(GetRectFromNotePosition(air.Item2));
+                        if (!longEndsPos.Contains(air.Position)) continue;
+                        dc.DrawAirStep(GetRectFromNotePosition(air.Position));
                     }
 
-                    var shortNotesDic = usingShortNoteQueues['1'].GroupBy(p => p.Item1).ToDictionary(p => p.Key, p => p.Select(q => q.Item2));
+                    var shortNotesDic = usingShortNoteQueues['1'].GroupBy(p => p.Type).ToDictionary(p => p.Key, p => p.Select(q => q.Position));
                     Action<char, Action<NotePosition>> drawNotes = (key, drawer) =>
                     {
                         if (!shortNotesDic.ContainsKey(key)) return;
@@ -226,18 +226,18 @@ namespace Sus2Image.Imaging
                     {
                         foreach (var item in airAction.Skip(1))
                         {
-                            if (item.Item2.Tick < headTick - paddingTick) continue;
-                            if (item.Item2.Tick > tailTick + paddingTick) break;
-                            dc.DrawAirAction(GetRectFromNotePosition(item.Item2).Expand(-MeasurementProfile.ShortNoteHeight * 0.28f));
+                            if (item.Position.Tick < headTick - paddingTick) continue;
+                            if (item.Position.Tick > tailTick + paddingTick) break;
+                            dc.DrawAirAction(GetRectFromNotePosition(item.Position).Expand(-MeasurementProfile.ShortNoteHeight * 0.28f));
                         }
                     }
 
                     foreach (var air in airs)
                     {
-                        var vd = air.Item1 == '2' || air.Item1 == '5' || air.Item1 == '6' ? VerticalAirDirection.Down : VerticalAirDirection.Up;
-                        var hd = air.Item1 == '1' || air.Item1 == '2' || air.Item1 == '7' ? HorizontalAirDirection.Center :
-                            (air.Item1 == '3' || air.Item1 == '5' || air.Item1 == '8' ? HorizontalAirDirection.Left : HorizontalAirDirection.Right);
-                        dc.DrawAir(GetRectFromNotePosition(air.Item2), vd, hd);
+                        var vd = air.Type == '2' || air.Type == '5' || air.Type == '6' ? VerticalAirDirection.Down : VerticalAirDirection.Up;
+                        var hd = air.Type == '1' || air.Type == '2' || air.Type == '7' ? HorizontalAirDirection.Center :
+                            (air.Type == '3' || air.Type == '5' || air.Type == '8' ? HorizontalAirDirection.Left : HorizontalAirDirection.Right);
+                        dc.DrawAir(GetRectFromNotePosition(air.Position), vd, hd);
                     }
 
                     g.ResetTransform();

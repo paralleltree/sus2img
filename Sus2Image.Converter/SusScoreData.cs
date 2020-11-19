@@ -16,16 +16,23 @@ namespace Sus2Image.Converter
         public string ArtistName { get; set; }
         public string DesignerName { get; set; }
 
-        public Dictionary<char, List<Tuple<char, NotePosition>>> ShortNotes { get; set; } = new Dictionary<char, List<Tuple<char, NotePosition>>>();
-        public Dictionary<char, List<List<Tuple<char, NotePosition>>>> LongNotes { get; set; }
+        public Dictionary<char, List<NoteDefinition>> ShortNotes { get; set; }
+        public Dictionary<char, List<List<NoteDefinition>>> LongNotes { get; set; }
 
         public int GetLastTick()
         {
             return Math.Max(
-                ShortNotes.Count > 0 ? ShortNotes.Max(p => p.Value.Count > 0 ? p.Value.Max(q => q.Item2.Tick) : 0) : 0,
-                LongNotes.Count > 0 ? LongNotes.Max(p => p.Value.Count > 0 ? p.Value.Max(r => r.Max(s => s.Item2.Tick)) : 0) : 0
+                ShortNotes.Count > 0 ? ShortNotes.Max(p => p.Value.Count > 0 ? p.Value.Max(q => q.Position.Tick) : 0) : 0,
+                LongNotes.Count > 0 ? LongNotes.Max(p => p.Value.Count > 0 ? p.Value.Max(r => r.Max(s => s.Position.Tick)) : 0) : 0
                 );
         }
+    }
+
+    public struct NoteDefinition
+    {
+        public int LineIndex { get; set; }
+        public char Type { get; set; }
+        public NotePosition Position { get; set; }
     }
 
     public struct NotePosition
