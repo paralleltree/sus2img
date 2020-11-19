@@ -170,7 +170,8 @@ namespace Sus2Image.Converter
 
         protected int ConvertHex(char c)
         {
-            return c == 'g' ? 16 : Convert.ToInt32(c.ToString(), 16);
+            string s = c.ToString().ToLower();
+            return s == "g" ? 16 : Convert.ToInt32(s, 16);
         }
 
         protected string TrimLiteral(string str)
