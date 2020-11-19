@@ -163,8 +163,7 @@ namespace Ched.Plugins
         private T SetNotePosition<T>(T note, NotePosition pos) where T : TappableBase
         {
             note.Tick = pos.Tick;
-            note.LaneIndex = pos.LaneIndex;
-            note.Width = pos.Width;
+            note.SetPosition(pos.LaneIndex, pos.Width);
             return note;
         }
     }
