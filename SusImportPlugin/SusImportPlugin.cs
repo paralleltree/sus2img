@@ -118,7 +118,7 @@ namespace Ched.Plugins
                 foreach (var airable in airablesDic[item.Position])
                 {
                     if (usedAirs.Contains(airable)) continue;
-                    var air = new Air(airable) { VerticalDirection = Regex.IsMatch(item.Type.ToString(), "1|3|4") ? VerticalAirDirection.Up : VerticalAirDirection.Down };
+                    var air = new Air(airable);
                     switch (item.Type)
                     {
                         case '1':
@@ -134,6 +134,20 @@ namespace Ched.Plugins
                         case '4':
                         case '6':
                             air.HorizontalDirection = HorizontalAirDirection.Right;
+                            break;
+                    }
+                    switch (item.Type)
+                    {
+                        case '1':
+                        case '3':
+                        case '4':
+                            air.VerticalDirection = VerticalAirDirection.Up;
+                            break;
+
+                        case '2':
+                        case '5':
+                        case '6':
+                            air.VerticalDirection = VerticalAirDirection.Down;
                             break;
                     }
                     res.Notes.Airs.Add(air);
