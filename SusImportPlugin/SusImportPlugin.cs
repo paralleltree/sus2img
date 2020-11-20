@@ -15,9 +15,9 @@ namespace Ched.Plugins
 {
     public class SusImportPlugin : IScoreBookImportPlugin
     {
-        public string FileFilter => "susファイル(*.sus)|*.sus";
+        public string FileFilter => "Sliding Universal Score(*.sus)|*.sus";
 
-        public string DisplayName => "Seaurchin Score File";
+        public string DisplayName => "Sliding Universal Score (*.sus)";
 
         public ScoreBook Import(TextReader reader)
         {
