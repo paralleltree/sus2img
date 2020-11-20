@@ -12,8 +12,8 @@ namespace Sus2Image.Converter
     {
         private Regex SusCommandPattern { get; } = new Regex(@"#(?<name>[A-Z]+)\s+\""?(?<value>[^\""]*)", RegexOptions.IgnoreCase);
         private Regex SusNotePattern { get; } = new Regex(@"#(?<barIndex>\d{3})(?<type>[1-5])(?<laneIndex>[0-9a-f])(?<longKey>[0-9a-z])?:(?<data>([0-9a-gh-z]{2}|\s)+)", RegexOptions.IgnoreCase);
-        private Regex BpmDefinitionPattern { get; } = new Regex(@"#BPM(?<key>[0-9a-f]{2}):\s*(?<value>[0-9.]+)", RegexOptions.IgnoreCase);
-        private Regex BpmCommandPattern { get; } = new Regex(@"#(?<barIndex>\d{3})08:\s*(?<data>[0-9a-f\s]+)", RegexOptions.IgnoreCase);
+        private Regex BpmDefinitionPattern { get; } = new Regex(@"#BPM(?<key>[0-9a-z]{2}):\s*(?<value>[0-9.]+)", RegexOptions.IgnoreCase);
+        private Regex BpmCommandPattern { get; } = new Regex(@"#(?<barIndex>\d{3})08:\s*(?<data>[0-9a-z\s]+)", RegexOptions.IgnoreCase);
         private Regex TimeSignatureCommandPattern { get; } = new Regex(@"(?<barIndex>\d{3})02:\s*(?<value>[0-9.]+)");
 
         public bool IsStrictMode { get; set; } = true;
@@ -59,8 +59,8 @@ namespace Sus2Image.Converter
             var barIndexCalculator = new BarIndexCalculator(TicksPerBeat, sigs);
 
             var bpmDic = bpmData.SelectMany(p => SplitData(barIndexCalculator, p.LineIndex, int.Parse(p.Match.Groups["barIndex"].Value), p.Match.Groups["data"].Value).Select(q => new { LineIndex = p.LineIndex, Definition = q }))
-                .Where(p => p.Definition.Data != "00" && BpmDefinitions.ContainsKey(p.Definition.Data))
-                .ToDictionary(p => p.Definition.Tick, p => BpmDefinitions[p.Definition.Data]);
+                .Where(p => p.Definition.Data != "00" && BpmDefinitions.ContainsKey(p.Definition.Data.ToLower()))
+                .ToDictionary(p => p.Definition.Tick, p => BpmDefinitions[p.Definition.Data.ToLower()]);
 
             // データ種別と位置
             var shortNotes = shortNotesData.GroupBy(p => p.Match.Groups["type"].Value[0]).ToDictionary(p => p.Key, p => p.SelectMany(q =>
@@ -128,6 +128,7 @@ namespace Sus2Image.Converter
 
         protected void StoreBpmDefinition(int lineIndex, string key, decimal value)
         {
+            key = key.ToLower();
             if (BpmDefinitions.ContainsKey(key)) BpmDefinitions[key] = value;
             else BpmDefinitions.Add(key, value);
         }
