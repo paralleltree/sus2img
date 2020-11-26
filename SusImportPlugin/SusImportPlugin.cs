@@ -59,8 +59,12 @@ namespace Ched.Plugins
                         break;
 
                     case '2':
+                        res.Notes.ExTaps.Add(SetNotePosition(new ExTap(), item.Position));
+                        break;
+
                     case '5':
                     case '6':
+                        args.ReportDiagnostic(new Diagnostic(DiagnosticSeverity.Warning, $"やべーExTAPは通常ExTAPとしてインポートされます。(行: {item.LineIndex + 1})"));
                         res.Notes.ExTaps.Add(SetNotePosition(new ExTap(), item.Position));
                         break;
 
@@ -76,7 +80,16 @@ namespace Ched.Plugins
 
             foreach (var hold in raw.LongNotes['2'])
             {
-                if (hold.Count != 2) continue; // 始点終点の対応がない
+                if (hold.Count != 2)
+                {
+                    args.ReportDiagnostic(new Diagnostic(DiagnosticSeverity.Warning, $"始点と終点以外を含むホールド定義です。このホールドは無視されます。(行: {string.Join(", ", hold.Select(p => p.LineIndex + 1))})"));
+                    continue;
+                }
+                if (hold[0].Position.LaneIndex != hold[1].Position.LaneIndex || hold[0].Position.Width != hold[1].Position.Width)
+                {
+                    args.ReportDiagnostic(new Diagnostic(DiagnosticSeverity.Warning, $"始点と終点のレーン位置が対応していないホールド定義です。このホールドは無視されます。(行: {string.Join(", ", hold.Select(p => p.LineIndex + 1))})"));
+                    continue;
+                }
                 res.Notes.Holds.Add(new Hold()
                 {
                     StartTick = hold[0].Position.Tick,
@@ -96,6 +109,10 @@ namespace Ched.Plugins
                 };
                 foreach (var step in steps.Skip(1))
                 {
+                    if (step.Type == '4')
+                    {
+                        args.ReportDiagnostic(new Diagnostic(DiagnosticSeverity.Warning, $"スライド変曲点は中継点としてインポートされます。(行: {step.LineIndex + 1})"));
+                    }
                     var stepTap = new Slide.StepTap(slide)
                     {
                         IsVisible = step.Type == '3' || step.Type == '2',
@@ -167,7 +184,16 @@ namespace Ched.Plugins
                 {
                     if (usedAirActions.Contains(airable)) continue;
                     var airAction = new AirAction(airable);
-                    airAction.ActionNotes.AddRange(item.Skip(1).Select(p => new AirAction.ActionNote(airAction) { Offset = p.Position.Tick - item[0].Position.Tick }));
+                    foreach (var note in item.Skip(1))
+                    {
+                        if (note.Position.LaneIndex != item[0].Position.LaneIndex || note.Position.Width != item[0].Position.Width)
+                        {
+                            args.ReportDiagnostic(new Diagnostic(DiagnosticSeverity.Warning, $"レーン位置が対応していないAir Action定義です。このAir Actionは無視されます。(行: {note.LineIndex + 1})"));
+                            continue;
+                        }
+                        var actionNote = new AirAction.ActionNote(airAction) { Offset = note.Position.Tick - item[0].Position.Tick };
+                        airAction.ActionNotes.Add(actionNote);
+                    }
                     res.Notes.AirActions.Add(airAction);
                     usedAirActions.Add(airable);
                     break;
