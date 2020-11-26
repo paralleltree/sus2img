@@ -19,22 +19,25 @@ namespace Ched.Plugins
 
         public string DisplayName => "Sliding Universal Score (*.sus)";
 
-        public ScoreBook Import(TextReader reader)
+        public ScoreBook Import(IScoreBookImportPluginArgs args)
         {
-            var sus = new SusParser().Parse(reader);
-            return new ScoreBook()
+            using (var reader = new StreamReader(args.Stream))
             {
-                Title = sus.Title,
-                ArtistName = sus.ArtistName,
-                NotesDesignerName = sus.DesignerName,
-                Score = ConvertScore(sus)
-            };
+                var sus = new SusParser() { DiagnosticCollector = new ChedDiagnosticCollector(args) }.Parse(reader);
+                return new ScoreBook()
+                {
+                    Title = sus.Title,
+                    ArtistName = sus.ArtistName,
+                    NotesDesignerName = sus.DesignerName,
+                    Score = ConvertScore(args, sus)
+                };
+            }
         }
 
-        private Score ConvertScore(SusScoreData raw)
+        private Score ConvertScore(IScoreBookImportPluginArgs args, SusScoreData raw)
         {
             var res = new Score() { TicksPerBeat = raw.TicksPerBeat };
-            res.Events.BPMChangeEvents = raw.BpmDefinitions.Select(p => new BPMChangeEvent() { Tick = p.Key, BPM = p.Value }).ToList();
+            res.Events.BpmChangeEvents = raw.BpmDefinitions.Select(p => new BpmChangeEvent() { Tick = p.Key, Bpm = p.Value }).ToList();
             res.Events.TimeSignatureChangeEvents = raw.TimeSignatures.Select(p =>
             {
                 int factor = 1;
@@ -179,6 +182,31 @@ namespace Ched.Plugins
             note.Tick = pos.Tick;
             note.SetPosition(pos.LaneIndex, pos.Width);
             return note;
+        }
+    }
+
+    public class ChedDiagnosticCollector : IDiagnosticCollector
+    {
+        private IScoreBookImportPluginArgs ScorePluginArgs;
+
+        public ChedDiagnosticCollector(IScoreBookImportPluginArgs args)
+        {
+            ScorePluginArgs = args;
+        }
+
+        public void ReportError(string message)
+        {
+            ScorePluginArgs.ReportDiagnostic(new Diagnostic(DiagnosticSeverity.Error, message));
+        }
+
+        public void ReportInformation(string message)
+        {
+            ScorePluginArgs.ReportDiagnostic(new Diagnostic(DiagnosticSeverity.Information, message));
+        }
+
+        public void ReportWarning(string message)
+        {
+            ScorePluginArgs.ReportDiagnostic(new Diagnostic(DiagnosticSeverity.Warning, message));
         }
     }
 }

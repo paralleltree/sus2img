@@ -19,7 +19,7 @@ namespace Sus2Image.Converter
         public IDiagnosticCollector DiagnosticCollector { get; set; } = new NullDiagnosticCollector();
 
         private int TicksPerBeat = 192;
-        private Dictionary<string, decimal> BpmDefinitions = new Dictionary<string, decimal>();
+        private Dictionary<string, double> BpmDefinitions = new Dictionary<string, double>();
         private string Title;
         private string ArtistName;
         private string DesignerName;
@@ -45,7 +45,7 @@ namespace Sus2Image.Converter
 
                 if (matchAction(SusCommandPattern.Match(line), m => ProcessCommand(lineIndex, m.Groups["name"].Value, m.Groups["value"].Value))) continue;
 
-                if (matchAction(BpmDefinitionPattern.Match(line), m => StoreBpmDefinition(lineIndex, m.Groups["key"].Value, decimal.Parse(m.Groups["value"].Value)))) continue;
+                if (matchAction(BpmDefinitionPattern.Match(line), m => StoreBpmDefinition(lineIndex, m.Groups["key"].Value, double.Parse(m.Groups["value"].Value)))) continue;
 
                 if (matchAction(BpmCommandPattern.Match(line), m => bpmData.Add((lineIndex, m)))) continue;
 
@@ -157,7 +157,7 @@ namespace Sus2Image.Converter
             }
         }
 
-        protected void StoreBpmDefinition(int lineIndex, string key, decimal value)
+        protected void StoreBpmDefinition(int lineIndex, string key, double value)
         {
             key = key.ToLower();
             if (key == "00")
