@@ -19,6 +19,7 @@ namespace Sus2Image.Converter
         public IDiagnosticCollector DiagnosticCollector { get; set; } = new NullDiagnosticCollector();
 
         private int TicksPerBeat = 192;
+        private int CurrentBarIndexOffset = 0;
         private Dictionary<string, double> BpmDefinitions = new Dictionary<string, double>();
         private string Title;
         private string ArtistName;
@@ -28,9 +29,9 @@ namespace Sus2Image.Converter
         {
             var sigs = new Dictionary<int, double>();
 
-            var shortNotesData = new List<(int LineIndex, Match Match)>();
-            var longNotesData = new List<(int LineIndex, Match Match)>();
-            var bpmData = new List<(int LineIndex, Match Match)>();
+            var shortNotesData = new List<LineData<Match>>();
+            var longNotesData = new List<LineData<Match>>();
+            var bpmData = new List<LineData<Match>>();
             bool matchAction(Match m, Action<Match> act)
             {
                 if (m.Success) act(m);
@@ -47,11 +48,11 @@ namespace Sus2Image.Converter
 
                 if (matchAction(BpmDefinitionPattern.Match(line), m => StoreBpmDefinition(lineIndex, m.Groups["key"].Value, double.Parse(m.Groups["value"].Value)))) continue;
 
-                if (matchAction(BpmCommandPattern.Match(line), m => bpmData.Add((lineIndex, m)))) continue;
+                if (matchAction(BpmCommandPattern.Match(line), m => bpmData.Add(new LineData<Match>(lineIndex, CurrentBarIndexOffset, m)))) continue;
 
-                if (matchAction(SusNotePattern.Match(line), m => (m.Groups["longKey"].Success ? longNotesData : shortNotesData).Add((lineIndex, m)))) continue;
+                if (matchAction(SusNotePattern.Match(line), m => (m.Groups["longKey"].Success ? longNotesData : shortNotesData).Add(new LineData<Match>(lineIndex, CurrentBarIndexOffset, m)))) continue;
 
-                if (matchAction(TimeSignatureCommandPattern.Match(line), m => sigs.Add(int.Parse(m.Groups["barIndex"].Value), double.Parse(m.Groups["value"].Value)))) continue;
+                if (matchAction(TimeSignatureCommandPattern.Match(line), m => sigs.Add(int.Parse(m.Groups["barIndex"].Value) + CurrentBarIndexOffset, double.Parse(m.Groups["value"].Value)))) continue;
             }
 
             if (!sigs.ContainsKey(0))
@@ -62,7 +63,7 @@ namespace Sus2Image.Converter
 
             var barIndexCalculator = new BarIndexCalculator(TicksPerBeat, sigs);
 
-            var bpmDic = bpmData.SelectMany(p => SplitData(barIndexCalculator, p.LineIndex, int.Parse(p.Match.Groups["barIndex"].Value), p.Match.Groups["data"].Value).Select(q => new { LineIndex = p.LineIndex, Definition = q }))
+            var bpmDic = bpmData.SelectMany(p => SplitData(barIndexCalculator, p.LineIndex, int.Parse(p.Value.Groups["barIndex"].Value) + p.BarIndexOffset, p.Value.Groups["data"].Value).Select(q => new { LineIndex = p.LineIndex, Definition = q }))
                 .Where(p =>
                 {
                     if (p.Definition.Data == "00") return false;
@@ -82,21 +83,21 @@ namespace Sus2Image.Converter
             }
 
             // データ種別と位置
-            var shortNotes = shortNotesData.GroupBy(p => p.Match.Groups["type"].Value[0]).ToDictionary(p => p.Key, p => p.SelectMany(q =>
+            var shortNotes = shortNotesData.GroupBy(p => p.Value.Groups["type"].Value[0]).ToDictionary(p => p.Key, p => p.SelectMany(q =>
             {
-                return SplitData(barIndexCalculator, q.LineIndex, int.Parse(q.Match.Groups["barIndex"].Value), q.Match.Groups["data"].Value)
+                return SplitData(barIndexCalculator, q.LineIndex, int.Parse(q.Value.Groups["barIndex"].Value) + q.BarIndexOffset, q.Value.Groups["data"].Value)
                     .Where(r => Regex.IsMatch(r.Data, "[1-9][1-9a-g]", RegexOptions.IgnoreCase))
-                    .Select(r => new NoteDefinition() { LineIndex = q.LineIndex, Type = r.Data[0], Position = new NotePosition() { Tick = r.Tick, LaneIndex = ConvertHex(q.Match.Groups["laneIndex"].Value[0]), Width = ConvertHex(r.Data[1]) } });
+                    .Select(r => new NoteDefinition() { LineIndex = q.LineIndex, Type = r.Data[0], Position = new NotePosition() { Tick = r.Tick, LaneIndex = ConvertHex(q.Value.Groups["laneIndex"].Value[0]), Width = ConvertHex(r.Data[1]) } });
             }).ToList());
 
             // ロング種別 -> ロングノーツリスト -> 構成点リスト
-            var longNotes = longNotesData.GroupBy(p => p.Match.Groups["type"].Value[0]).ToDictionary(p => p.Key, p =>
+            var longNotes = longNotesData.GroupBy(p => p.Value.Groups["type"].Value[0]).ToDictionary(p => p.Key, p =>
             {
-                return p.GroupBy(q => q.Match.Groups["longKey"].Value.ToUpper()).Select(q => q.SelectMany(r =>
+                return p.GroupBy(q => q.Value.Groups["longKey"].Value.ToUpper()).Select(q => q.SelectMany(r =>
                 {
-                    return SplitData(barIndexCalculator, lineIndex, int.Parse(r.Match.Groups["barIndex"].Value), r.Match.Groups["data"].Value)
+                    return SplitData(barIndexCalculator, lineIndex, int.Parse(r.Value.Groups["barIndex"].Value) + r.BarIndexOffset, r.Value.Groups["data"].Value)
                         .Where(s => Regex.IsMatch(s.Data, "[1-5][1-9a-g]", RegexOptions.IgnoreCase))
-                        .Select(s => new NoteDefinition() { LineIndex = r.LineIndex, Type = s.Data[0], Position = new NotePosition() { Tick = s.Tick, LaneIndex = ConvertHex(r.Match.Groups["laneIndex"].Value[0]), Width = ConvertHex(s.Data[1]) } });
+                        .Select(s => new NoteDefinition() { LineIndex = r.LineIndex, Type = s.Data[0], Position = new NotePosition() { Tick = s.Tick, LaneIndex = ConvertHex(r.Value.Groups["laneIndex"].Value[0]), Width = ConvertHex(s.Data[1]) } });
                 }))
                 .SelectMany(q => p.Key == '2' ? q.GroupBy(r => r.Position.LaneIndex).SelectMany(r => FlatSplitLongNotes(r, '1', '2')) : FlatSplitLongNotes(q, '1', '2'))
                 .ToList();
@@ -136,6 +137,10 @@ namespace Sus2Image.Converter
 
                 case "DESIGNER":
                     DesignerName = TrimLiteral(value);
+                    break;
+
+                case "MEASUREBS":
+                    CurrentBarIndexOffset = int.Parse(value);
                     break;
 
                 case "REQUEST":
@@ -237,6 +242,21 @@ namespace Sus2Image.Converter
         protected void FillKey<TKey, TValue>(IDictionary<TKey, TValue> dic, TKey key, TValue defaultValue)
         {
             if (!dic.ContainsKey(key)) dic.Add(key, defaultValue);
+        }
+
+        // 行ごとのメタデータを含むクラス
+        class LineData<T>
+        {
+            public int LineIndex { get; }
+            public int BarIndexOffset { get; }
+            public T Value { get; }
+
+            public LineData(int lineIndex, int barIndexOffset, T value)
+            {
+                LineIndex = lineIndex;
+                BarIndexOffset = barIndexOffset;
+                Value = value;
+            }
         }
     }
 
