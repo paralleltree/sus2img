@@ -21,14 +21,13 @@ namespace Sus2Image.Converter
         private int TicksPerBeat = 192;
         private int CurrentBarIndexOffset = 0;
         private Dictionary<string, double> BpmDefinitions = new Dictionary<string, double>();
+        private Dictionary<int, double> TimeSignatureDefinitions = new Dictionary<int, double>();
         private string Title;
         private string ArtistName;
         private string DesignerName;
 
         public SusScoreData Parse(TextReader reader)
         {
-            var sigs = new Dictionary<int, double>();
-
             var shortNotesData = new List<LineData<Match>>();
             var longNotesData = new List<LineData<Match>>();
             var bpmData = new List<LineData<Match>>();
@@ -52,16 +51,16 @@ namespace Sus2Image.Converter
 
                 if (matchAction(SusNotePattern.Match(line), m => (m.Groups["longKey"].Success ? longNotesData : shortNotesData).Add(new LineData<Match>(lineIndex, CurrentBarIndexOffset, m)))) continue;
 
-                if (matchAction(TimeSignatureCommandPattern.Match(line), m => sigs.Add(int.Parse(m.Groups["barIndex"].Value) + CurrentBarIndexOffset, double.Parse(m.Groups["value"].Value)))) continue;
+                if (matchAction(TimeSignatureCommandPattern.Match(line), m => StoreTimeSignatureDefinition(lineIndex, int.Parse(m.Groups["barIndex"].Value) + CurrentBarIndexOffset, double.Parse(m.Groups["value"].Value)))) continue;
             }
 
-            if (!sigs.ContainsKey(0))
+            if (!TimeSignatureDefinitions.ContainsKey(0))
             {
-                sigs.Add(0, 4.0);
+                TimeSignatureDefinitions.Add(0, 4.0);
                 DiagnosticCollector.ReportInformation("初期拍子定義が存在しないため、4/4拍子に設定します。");
             }
 
-            var barIndexCalculator = new BarIndexCalculator(TicksPerBeat, sigs);
+            var barIndexCalculator = new BarIndexCalculator(TicksPerBeat, TimeSignatureDefinitions);
 
             var bpmDic = bpmData.SelectMany(p => SplitData(barIndexCalculator, p.LineIndex, int.Parse(p.Value.Groups["barIndex"].Value) + p.BarIndexOffset, p.Value.Groups["data"].Value).Select(q => new { LineIndex = p.LineIndex, Definition = q }))
                 .Where(p =>
@@ -114,7 +113,7 @@ namespace Sus2Image.Converter
             {
                 TicksPerBeat = this.TicksPerBeat,
                 BpmDefinitions = bpmDic,
-                TimeSignatures = sigs.ToDictionary(p => barIndexCalculator.GetTickFromBarIndex(p.Key), p => p.Value),
+                TimeSignatures = TimeSignatureDefinitions.ToDictionary(p => barIndexCalculator.GetTickFromBarIndex(p.Key), p => p.Value),
                 Title = this.Title,
                 ArtistName = this.ArtistName,
                 DesignerName = this.DesignerName,
@@ -177,6 +176,17 @@ namespace Sus2Image.Converter
                 return;
             }
             BpmDefinitions.Add(key, value);
+        }
+
+        protected void StoreTimeSignatureDefinition(int lineIndex, int barIndex, double value)
+        {
+            if (TimeSignatureDefinitions.ContainsKey(barIndex))
+            {
+                DiagnosticCollector.ReportWarning($"重複した拍子変更定義です。先行する定義を上書きします。(行: {lineIndex + 1}, 小節位置: {barIndex})");
+                TimeSignatureDefinitions[barIndex] = value;
+                return;
+            }
+            TimeSignatureDefinitions.Add(barIndex, value);
         }
 
         // 同一識別子を持つロングノーツのリストをロングノーツ単体に分解します
