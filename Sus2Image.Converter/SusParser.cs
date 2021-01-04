@@ -94,7 +94,7 @@ namespace Sus2Image.Converter
             {
                 return p.GroupBy(q => q.Value.Groups["longKey"].Value.ToUpper()).Select(q => q.SelectMany(r =>
                 {
-                    return SplitData(barIndexCalculator, lineIndex, int.Parse(r.Value.Groups["barIndex"].Value) + r.BarIndexOffset, r.Value.Groups["data"].Value)
+                    return SplitData(barIndexCalculator, r.LineIndex, int.Parse(r.Value.Groups["barIndex"].Value) + r.BarIndexOffset, r.Value.Groups["data"].Value)
                         .Where(s => Regex.IsMatch(s.Data, "[1-5][1-9a-g]", RegexOptions.IgnoreCase))
                         .Select(s => new NoteDefinition() { LineIndex = r.LineIndex, Type = s.Data[0], Position = new NotePosition() { Tick = s.Tick, LaneIndex = ConvertHex(r.Value.Groups["laneIndex"].Value[0]), Width = ConvertHex(s.Data[1]) } });
                 }))
