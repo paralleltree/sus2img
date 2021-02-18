@@ -9,7 +9,7 @@ namespace Sus2Image.Converter
     public class SusScoreData
     {
         public int TicksPerBeat { get; set; } = 192;
-        public Dictionary<int, decimal> BpmDefinitions { get; set; } = new Dictionary<int, decimal>() { { 0, 120.0m } };
+        public Dictionary<int, double> BpmDefinitions { get; set; } = new Dictionary<int, double>() { { 0, 120 } };
         public Dictionary<int, double> TimeSignatures { get; set; } = new Dictionary<int, double>() { { 0, 4.0 } };
 
         public string Title { get; set; }
